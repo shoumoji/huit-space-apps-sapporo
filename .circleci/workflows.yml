@@ -1,0 +1,137 @@
+version: 2.1
+
+orbs:
+  aws-ecs: circleci/aws-ecs@3.2.0
+  aws-cli: circleci/aws-cli@3.1.3
+  slack: circleci/slack@4.10.1
+
+executors:
+  arm-machine:
+    machine:
+      image: "ubuntu-2004:current"
+      docker_layer_caching: true
+    resource_class: arm.medium
+
+parameters:
+  stg-api-workflow:
+    type: boolean
+    default: false
+  stg-frontend-workflow:
+    type: boolean
+    default: false
+  prd-api-workflow:
+    type: boolean
+    default: false
+  prd-frontend-workflow:
+    type: boolean
+    default: false
+
+jobs:
+  deploy:
+    executor: arm-machine
+    parameters:
+      system:
+        type: enum
+        enum: ["api", "frontend"]
+      repo-url:
+        type: string
+      docker-build-arg:
+        type: string
+        default: ""
+      cluster-name:
+        type: string
+      container-name:
+        type: string
+      task-definition-family:
+        type: string
+      task-definition-env-var:
+        type: string
+        default: "NULL=NULL"
+      ecs-task-execution-role-arn:
+        type: string
+      ecs-task-role-arn:
+        type: string
+      log-group-name:
+        type: string
+
+    steps:
+      - checkout
+      - aws-cli/setup
+      - run:
+          name: "Install envsubst"
+          command: sudo apt-get update && sudo apt-get install -y gettext-base
+      - run:
+          name: "build container"
+          command: |
+            cd << parameters.system >>
+            docker build -t << parameters.repo-url >>:${CIRCLE_SHA1} << parameters.docker-build-arg >> .
+      - run:
+          name: "push container"
+          command: |
+            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin << parameters.repo-url >>
+            docker push << parameters.repo-url >>:${CIRCLE_SHA1}
+      - run:
+          name: "make task definition"
+          command: |
+            export TASK_DEFINITION_FAMILY=<< parameters.task-definition-family >>
+            export CONTAINER_NAME=<< parameters.container-name >>
+            export REPO_URL=<< parameters.repo-url >>
+            export ECS_TASK_EXECUTION_ROLE_ARN=<< parameters.ecs-task-execution-role-arn >>
+            export ECS_TASK_ROLE_ARN=<< parameters.ecs-task-role-arn >>
+            export LOG_GROUP_NAME=<< parameters.log-group-name >>
+            export IMAGE_TAG="${CIRCLE_SHA1}"
+            export << parameters.task-definition-env-var >>
+            envsubst < << parameters.system >>/task-definition.json > task-definition.json
+      - store_artifacts:
+          path: task-definition.json
+      - aws-ecs/update-task-definition-from-json:
+          task-definition-json: task-definition.json
+      - run:
+          name: "update ecs service"
+          command: >
+            aws ecs update-service 
+            --cluster << parameters.cluster-name >> 
+            --service << parameters.system >> 
+            --task-definition << parameters.task-definition-family >>
+      - run:
+          name: "wait ecs service"
+          command: >
+            aws ecs wait services-stable
+            --cluster << parameters.cluster-name >>
+            --services << parameters.system >>
+      - slack/notify:
+          event: pass
+          template: basic_success_1
+      - slack/notify:
+          event: fail
+          template: basic_fail_1
+
+workflows:
+  stg-api-deploy:
+    when: << pipeline.parameters.stg-api-workflow >>
+    jobs:
+      - deploy:
+          system: "api"
+          task-definition-family: "stg-huit-space-sapporo-api"
+          container-name: "stg-huit-space-sapporo-api"
+          repo-url: ""
+          cluster-name: "stg-space-sapporo"
+          ecs-task-execution-role-arn: ""
+          ecs-task-role-arn: ""
+          log-group-name: "stg-huit-space-sapporo/app"
+          task-definition-env-var: >
+            MYSQL_HOST_ARN=
+            MYSQL_USER_ARN=
+            MYSQL_USER_PASSWORD_ARN=
+          filters:
+            branches:
+              only:
+                - stg
+  #stg-frontend-deploy:
+  #  when: << pipeline.parameters.stg-frontend-workflow >>
+  #  jobs:
+  #    - deploy:
+  #        filters:
+  #          branches:
+  #            only:
+  #              - stg

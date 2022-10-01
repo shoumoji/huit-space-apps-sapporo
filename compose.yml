@@ -1,0 +1,34 @@
+services:
+  api:
+    container_name: api.local.huit-space-sapporo.adlay.net;
+    build:
+      context: ./api
+    env_file:
+      - .env.local
+    depends_on:
+      - db
+    restart: on-failure
+
+  front:
+    container_name: local.huit-space-sapporo.adlay.net;
+    build:
+      context: ./frontend
+    restart: on-failure
+
+  db:
+    image: mysql:8.0.30
+    volumes:
+      - ./database:/docker-entrypoint-initdb.d
+      - ./database/my.cnf:/etc/mysql/conf.d/my.cnf
+    ports:
+      - "3306:3306"
+    env_file:
+      - .env.local
+    restart: on-failure
+  proxy:
+    image: nginx:latest
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates
+    ports:
+      - "80:80"
+      - "443:443"

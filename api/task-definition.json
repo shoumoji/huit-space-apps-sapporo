@@ -1,0 +1,59 @@
+{
+  "family": "${TASK_DEFINITION_FAMILY}",
+  "cpu": "256",
+  "memory": "512",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "runtimePlatform": {
+    "operatingSystemFamily": "LINUX",
+    "cpuArchitecture": "ARM64"
+  },
+  "executionRoleArn": "${ECS_TASK_EXECUTION_ROLE_ARN}",
+  "taskRoleArn": "${ECS_TASK_ROLE_ARN}",
+  "containerDefinitions": [
+    {
+      "name": "${CONTAINER_NAME}",
+      "image": "${REPO_URL}:${IMAGE_TAG}",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 80
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-region": "${AWS_REGION}",
+          "awslogs-stream-prefix": "app",
+          "awslogs-group": "${LOG_GROUP_NAME}"
+        }
+      },
+      "environment": [
+        {
+          "name": "MYSQL_DATABASE",
+          "value": "huit"
+        },
+        {
+          "name": "MYSQL_PORT",
+          "value": "3306"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "MYSQL_HOST",
+          "valueFrom": "${MYSQL_HOST_ARN}"
+        },
+        {
+          "name": "MYSQL_USER",
+          "valueFrom": "${MYSQL_USER_ARN}"
+        },
+        {
+          "name": "MYSQL_PASSWORD",
+          "valueFrom": "${MYSQL_USER_PASSWORD_ARN}"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+name: Generate ER Diagrams
+on:
+  push:
+    paths:
+      - "**.sql"
+  workflow_dispatch:
+
+jobs:
+  er-diagram:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: mysql:8.0.30
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: huit
+        options: >-
+          --health-cmd "mysqladmin ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{secrets.GITHUB_TOKEN}}
+      - name: input schema to mysql
+        run: |
+          cd database
+          mysql --protocol=TCP -h localhost -u huit -phuit huit < 1_schema.sql
+      - name: Setup SchemaSpy
+        run: |
+          cd database
+          sudo apt update
+          sudo apt install openjdk-8-jre 
+          curl -o schemaspy.jar -L 'https://github.com/schemaspy/schemaspy/releases/download/v6.1.0/schemaspy-6.1.0.jar'
+          curl -L https://dev.mysql.com/get/downloads/connector-j/mysql-connector-java-8.0.30.tar.gz | tar xvzf - --strip=1 mysql-connector-java-8.0.30/mysql-connector-java-8.0.30.jar
+      - name: Generate ER Diagrams
+        run: |
+          cd database
+          /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java -jar schemaspy.jar -t mysql -dp mysql-connector-java-8.0.30.jar -host localhost -port 3306 -u huit -p huit -db huit -o schema -s huit -vizjs
+      - name: Push Local Changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Generate ER diagrams"
+          branch: ${{ github.head_ref }}

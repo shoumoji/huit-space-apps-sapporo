@@ -1,0 +1,30 @@
+version: 2.1
+setup: true
+orbs:
+  path-filtering: circleci/path-filtering@0.1.3
+
+workflows:
+  stg:
+    jobs:
+      - path-filtering/filter:
+          base-revision: stg
+          mapping: |
+            api/.* stg-api-workflow true
+            frontend/.* stg-frontend-workflow true
+          config-path: .circleci/workflows.yml
+          filters:
+            branches:
+              only:
+                - stg
+  prd:
+    jobs:
+      - path-filtering/filter:
+          base-revision: main
+          mapping: |
+            api/.* prd-api-workflow true
+            frontend/.* prd-frontend-workflow true
+          config-path: .circleci/workflows.yml
+          filters:
+            branches:
+              only:
+                - main
