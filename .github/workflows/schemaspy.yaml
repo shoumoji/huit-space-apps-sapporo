@@ -14,7 +14,7 @@ jobs:
         ports:
           - 3306:3306
         env:
-          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_PASSWORD: huit
           MYSQL_DATABASE: huit
         options: >-
           --health-cmd "mysqladmin ping"
@@ -30,7 +30,7 @@ jobs:
       - name: input schema to mysql
         run: |
           cd database
-          mysql --protocol=TCP -h localhost -u huit -phuit huit < 1_schema.sql
+          mysql --protocol=TCP -h localhost -u root -phuit huit < 1_schema.sql
       - name: Setup SchemaSpy
         run: |
           cd database
@@ -41,7 +41,7 @@ jobs:
       - name: Generate ER Diagrams
         run: |
           cd database
-          /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java -jar schemaspy.jar -t mysql -dp mysql-connector-java-8.0.30.jar -host localhost -port 3306 -u huit -p huit -db huit -o schema -s huit -vizjs
+          /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java -jar schemaspy.jar -t mysql -dp mysql-connector-java-8.0.30.jar -host localhost -port 3306 -u root -p huit -db huit -o schema -s huit -vizjs
       - name: Push Local Changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
