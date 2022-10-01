@@ -1,5 +1,5 @@
 CREATE TABLE `countries` (
-  `code` CHAR(2) NOT NULL AUTO_INCREMENT,
+  `code` CHAR(2) NOT NULL,
   `name` varchar(255) NOT NULL,
   `latitude` POINT NOT NULL,
   `longitude` POINT NOT NULL,
