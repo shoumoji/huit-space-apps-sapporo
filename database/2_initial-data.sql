@@ -1,5 +1,5 @@
 INSERT INTO
-	`countries` (`code`, `name`,`location`)
+	`countries` (`code`, `name`,`location`,`population`)
 VALUES
 ('AF','Afghanistan',ST_GeomFromText('POINT(69.1736723,34.5210955)')),
 ('AL','Albania',ST_GeomFromText('POINT(19.8193172,41.3274082)')),
